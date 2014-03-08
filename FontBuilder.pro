@@ -143,6 +143,14 @@ win32 {
 linux*|freebsd* { 
     CONFIG += link_pkgconfig
     PKGCONFIG += freetype2
+
+    isEmpty(PREFIX) {
+        PREFIX = /usr/local
+    }
+    BINDIR = $$PREFIX/bin
+
+    INSTALLS += target
+    target.path = $$BINDIR
 }
 OTHER_FILES += fontbuilder_ru.ts \
     fontbuilder_en.ts
