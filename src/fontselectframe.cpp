@@ -36,6 +36,7 @@
 #include <QFileDialog>
 #include <QProgressDialog>
 #include <QDesktopServices>
+#include <QStack>
 
 #include "fontconfig.h"
 
@@ -122,16 +123,37 @@ void FontSelectFrame::setFontsDirectory(QString dir_name) {
         return;
     }
 
+    QStringList files;
+    QStringList filter;
+    filter << "*.ttf"
+           << "*.pcf"
+           << "*.pcf.gz"
+           << "*.otf";
+    QStack<QString> dir_stack;
+    dir_stack.push(dir_name);
 
-    QDir dir(dir_name);
-    QStringList files = dir.entryList(
-            QStringList()
-            << "*.ttf"
-            << "*.pcf"
-            << "*.pcf.gz"
-            << "*.otf",
+    while(!dir_stack.isEmpty()) {
+        QDir dir(dir_stack.pop());
+
+        QFileInfoList info_entries = dir.entryInfoList(
+            filter,
             QDir::Files | QDir::Readable
             );
+
+        for(int ii = 0; ii < info_entries.size(); ++ii) {
+            files << info_entries[ii].absoluteFilePath();
+        }
+
+        info_entries = dir.entryInfoList(
+            QStringList(),
+            QDir::AllDirs | QDir::NoSymLinks | QDir::NoDotAndDotDot
+            );
+
+        for(int ii = 0; ii < info_entries.size(); ++ii) {
+            dir_stack.push(info_entries[ii].absoluteFilePath());
+        }
+    }
+
     QProgressDialog* progress = 0;
     if (!files.isEmpty()) {
         progress = new QProgressDialog(
@@ -145,7 +167,7 @@ void FontSelectFrame::setFontsDirectory(QString dir_name) {
     int progress_val = 0;
     foreach (QString file_name, files) {
         //qDebug() << "found font file : " << file_name;
-        QFile file(dir.filePath(file_name));
+        QFile file(file_name);
         if (file.open(QFile::ReadOnly)) {
             QByteArray bytes = file.readAll();
             const FT_Byte* data = reinterpret_cast<const FT_Byte* >(bytes.data());
